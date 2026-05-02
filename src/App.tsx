@@ -11,6 +11,7 @@ import LiveFeed from './components/LiveFeed';
 import StatsCounter from './components/StatsCounter';
 import HeroSection from './components/HeroSection';
 import PaulSection from './components/PaulSection';
+import ChatWidget from './components/ChatWidget';
 import { TEAM, STATS } from './constants';
 
 function App() {
@@ -261,6 +262,9 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* AI Chat Widget */}
+      <ChatWidget />
 
       {/* Agent Demo Modal */}
       <AnimatePresence>
