@@ -14,7 +14,8 @@ const AGENTS = {
   Sade: { id: 'c0423c15-71cd-471a-857f-793d286dfc69', color: 'from-slate-600 to-gray-800', title: 'Operations' },
 };
 
-const FLOWISE_BASE_URL = 'https://flowise.aiolosmedia.com';
+// Use local API proxy to avoid CORS
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 interface Message {
   role: 'user' | 'agent';
@@ -32,6 +33,7 @@ export default function ChatWidget() {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showAgentSelector, setShowAgentSelector] = useState(false);
+  const [sessionId, setSessionId] = useState(`web-${Date.now()}`);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,14 +63,13 @@ export default function ChatWidget() {
     setMessages(prev => [...prev, { role: 'agent', text: '', isTyping: true }]);
 
     try {
-      const response = await fetch(`${FLOWISE_BASE_URL}/api/v1/prediction/${currentAgent.id}`, {
+      const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: userMsg.text,
-          overrideConfig: {
-            sessionId: `web-${Date.now()}`,
-          }
+          agent: selectedAgent,
+          message: userMsg.text,
+          sessionId: sessionId,
         }),
       });
 
@@ -77,7 +78,12 @@ export default function ChatWidget() {
       }
 
       const data = await response.json();
-      const agentText = data.text || data.response || "I'm processing your request...";
+      const agentText = data.text || "I'm processing your request...";
+      
+      // Update session ID if returned
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
+      }
 
       // Remove typing indicator and add real response
       setMessages(prev => {
