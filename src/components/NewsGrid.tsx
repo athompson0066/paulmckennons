@@ -1,25 +1,62 @@
-export const NEWS = [
-  { title: "GTA Market Trends: Q2 Insights", date: "April 25, 2026", image: "https://picsum.photos/seed/news1/400/300" },
-  { title: "Interest Rate Adjustments Impacting Buyers", date: "April 24, 2026", image: "https://picsum.photos/seed/news2/400/300" },
-  { title: "Yorkville Luxury Condo Demand Surges", date: "April 23, 2026", image: "https://picsum.photos/seed/news3/400/300" },
-  { title: "Pre-construction Condo Guide 2026", date: "April 22, 2026", image: "https://picsum.photos/seed/news4/400/300" },
-  { title: "Sustainable Home Features that Add Value", date: "April 21, 2026", image: "https://picsum.photos/seed/news5/400/300" },
-  { title: "Top 5 Neighborhoods for First-Time Homebuyers", date: "April 20, 2026", image: "https://picsum.photos/seed/news6/400/300" },
-];
+import { useState, useEffect } from 'react';
+
+interface NewsItem {
+  id: { videoId: string };
+  snippet: {
+    title: string;
+    publishedAt: string;
+    thumbnails: {
+      high: { url: string };
+    };
+  };
+}
 
 export default function NewsGrid() {
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/youtube-news')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setNews(data);
+        } else {
+          setNews([]);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setNews([]);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return <section className="my-16"><p>Loading news...</p></section>;
+  }
+
   return (
     <section className="my-16">
       <h3 className="font-heading text-sm font-bold mb-8 text-slate-400 uppercase tracking-[0.2em]">Real Estate News</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {NEWS.map((item, i) => (
-          <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:border-brand-blue transition-all group">
-            <img src={item.image} alt={item.title} className="w-full h-48 object-cover" />
+        {news.map((item) => (
+          <a 
+            key={item.id.videoId} 
+            href={`https://www.youtube.com/watch?v=${item.id.videoId}`} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:border-brand-blue transition-all group"
+          >
+            <img src={item.snippet.thumbnails.high.url} alt={item.snippet.title} className="w-full h-48 object-cover" />
             <div className="p-4">
-              <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">{item.date}</p>
-              <h4 className="font-bold text-sm text-brand-blue group-hover:text-brand-red transition">{item.title}</h4>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">
+                {new Date(item.snippet.publishedAt).toLocaleDateString()}
+              </p>
+              <h4 className="font-bold text-sm text-brand-blue group-hover:text-brand-red transition">{item.snippet.title}</h4>
             </div>
-          </div>
+          </a>
         ))}
       </div>
     </section>

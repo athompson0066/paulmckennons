@@ -20,12 +20,16 @@ export default function PodcastSection() {
           </button>
         </div>
         
-        <div className="flex-1 w-full bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl flex flex-col items-center justify-center gap-4">
-             <Headphones size={64} className="text-brand-blue"/>
-             <p className="text-slate-400 font-medium">Episode #12: Solving the Inventory Crunch</p>
-             <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
-                <div className="bg-brand-red w-1/3 h-full"></div>
-             </div>
+        <div className="flex-1 w-full bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden scrollbar-hide">
+             <iframe 
+                src="https://open.spotify.com/embed/episode/4O04OkiNg5elnSlhF57wiE" 
+                width="100%" 
+                height="400" 
+                frameBorder="0" 
+                allowFullScreen={true} 
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                loading="lazy">
+             </iframe>
         </div>
       </div>
     </section>

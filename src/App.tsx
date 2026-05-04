@@ -1,282 +1,209 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
-import { 
-  Sparkles, Zap, TrendingUp, Users, MessageSquare, 
-  ArrowRight, Shield, Clock, Award, ChevronDown, Play,
-  X, Bot, Circle, CheckCircle2
-} from 'lucide-react';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { motion, useScroll, useTransform } from 'motion/react';
+import { useRef } from 'react';
+import { MapPin, Palette, Users, Wrench, Calendar, Truck, Search } from 'lucide-react';
 import AgentCard from './components/AgentCard';
-import AgentDemo from './components/AgentDemo';
-import LiveFeed from './components/LiveFeed';
-import StatsCounter from './components/StatsCounter';
-import HeroSection from './components/HeroSection';
-import PaulSection from './components/PaulSection';
-import ChatWidget from './components/ChatWidget';
-import { TEAM, STATS } from './constants';
+import PainPointSection from './components/PainPointSection';
+import FeaturedPropertyShowcase from './components/FeaturedPropertyShowcase';
+import NewsGrid from './components/NewsGrid';
+import PaulIntro from './components/PaulIntro';
+import UnifiedConcierge from './components/UnifiedConcierge';
+import PodcastSection from './components/PodcastSection';
+import LeadMagnetsSection from './components/LeadMagnetsSection';
+import ContactSection from './components/ContactSection';
+import { TEAM, LIVE_ACTIVITIES } from './constants';
 
-function App() {
-  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [showDemo, setShowDemo] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll();
-  const scaleX = useTransform(scrollYProgress, [0, 1], [0, 1]);
-
-  const openDemo = (agentName: string) => {
-    setSelectedAgent(agentName);
-    setShowDemo(true);
+export default function App() {
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  });
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+  const getActivityIcon = (type: string) => {
+    switch(type) {
+        case 'market': return <MapPin size={14} className="text-brand-red" />;
+        case 'design': return <Palette size={14} className="text-purple-500" />;
+        case 'outreach': return <Users size={14} className="text-brand-blue" />;
+        case 'trades': return <Wrench size={14} className="text-orange-500" />;
+        case 'concierge': return <Calendar size={14} className="text-emerald-500" />;
+        case 'moving': return <Truck size={14} className="text-sky-500" />;
+        default: return <Search size={14} className="text-slate-400" />;
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden" ref={scrollRef}>
-      {/* Progress bar */}
-      <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-brand-blue via-brand-red to-brand-gold z-[100] origin-left"
-        style={{ scaleX }}
-      />
-
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass-card-strong border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-blue to-brand-dark flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-brand-red rounded-full animate-pulse" />
+    <div className="min-h-screen bg-neutral-50 font-sans">
+      {/* Navbar */}
+      <motion.header 
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        className="p-6 bg-white shadow-sm sticky top-0 z-50"
+      >
+        <nav className="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 className="font-heading text-2xl font-bold text-brand-blue">REALTRON <span className="font-light italic text-slate-500">Intelligence</span></h1>
+            <div className="hidden md:flex gap-8 text-xs font-bold text-slate-600 tracking-wider">
+                <a href="#about" className="hover:text-brand-blue transition">ABOUT</a>
+                <a href="#agents" className="hover:text-brand-blue transition">AGENTS</a>
+                <a href="#featured" className="hover:text-brand-blue transition">LISTINGS</a>
+                <a href="#magnets" className="hover:text-brand-blue transition">RESOURCES</a>
+                <a href="#concierge" className="hover:text-brand-blue transition">CONCIERGE</a>
+                <a href="#news" className="hover:text-brand-blue transition">NEWS</a>
+                <a href="#contact" className="hover:text-brand-blue transition">CONTACT</a>
             </div>
-            <div>
-              <h1 className="font-heading text-lg font-bold tracking-tight">
-                <span className="text-white">Paul</span>
-                <span className="text-brand-red">McKennon</span>
-              </h1>
-              <p className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Real Estate Intelligence</p>
-            </div>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
-            <a href="#agents" className="hover:text-white transition-colors">Intelligence Core</a>
-            <a href="#stats" className="hover:text-white transition-colors">Live Metrics</a>
-            <a href="#paul" className="hover:text-white transition-colors">Paul's Vision</a>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-xs font-medium text-emerald-400">6 Agents Active</span>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-r from-brand-blue to-brand-dark text-white px-5 py-2 rounded-full text-sm font-bold hover:shadow-lg hover:shadow-brand-blue/25 transition-all"
-              onClick={() => document.getElementById('agents')?.scrollIntoView({ behavior: 'smooth' })}
+            <motion.button 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }}
+                className="bg-brand-blue text-white px-6 py-2 text-xs font-bold rounded-full hover:bg-opacity-90"
             >
-              Meet the Team
+                PRIVATE ACCESS
             </motion.button>
-          </div>
-        </div>
-      </nav>
+        </nav>
+      </motion.header>
 
       {/* Hero Section */}
-      <HeroSection />
+      <section ref={heroRef} className="relative h-[80vh] flex items-center justify-start text-white p-6 overflow-hidden">
+        <motion.img 
+          src="https://static.vecteezy.com/system/resources/thumbnails/074/596/009/small_2x/excited-interracial-couple-looking-at-smartphone-on-urban-rooftop-happy-man-and-woman-laughing-at-phone-screen-with-city-skyline-background-technology-and-success-concept-free-photo.jpg" 
+          alt="Hero Background" 
+          className="absolute inset-0 w-full h-full object-cover object-center scale-x-[-1]"
+          style={{ y }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/80"></div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.02, transition: { duration: 0.4 } }}
+          transition={{ duration: 0.8 }}
+          className="relative z-10 text-left max-w-4xl pl-6 md:pl-24 cursor-default"
+        >
+          <span className="inline-block bg-brand-red text-white py-1 px-4 rounded-full text-xs font-bold tracking-widest uppercase mb-4">Now Serving the GTA</span>
+          <h2 className="font-heading text-4xl md:text-5xl lg:text-7xl font-extrabold mb-6 leading-tight tracking-tight text-white drop-shadow-lg">The GTA’s Only Real Estate Intelligence Team.</h2>
+          <p className="text-lg md:text-2xl mb-10 text-blue-100 font-light max-w-3xl drop-shadow">Your 24/7 Real Estate Hub. 38 Years of Paul McKennon’s Expertise, <span className="font-semibold italic text-white">Amplified by Advanced AI Intelligence.</span></p>
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-brand-blue text-white text-lg px-10 py-4 font-bold rounded-full hover:bg-opacity-90 shadow-xl transition-transform"
+          >
+            EXPLORE EXCLUSIVE LISTINGS
+          </motion.button>
+        </motion.div>
+      </section>
 
-      {/* Live Stats Counter */}
-      <section id="stats" className="py-20 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950" />
-        <div className="absolute inset-0 bg-grid bg-center" />
-        <div className="relative max-w-7xl mx-auto px-6">
-          <motion.div
+      <div id="about"><PaulIntro /></div>
+
+      <main className="max-w-7xl mx-auto p-6 md:p-12">
+        <PainPointSection />
+        
+        {/* Roster & Feed Layout */}
+        <motion.div 
+            id="agents"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-blue/10 border border-brand-blue/20 mb-6">
-              <Zap className="w-4 h-4 text-brand-blue" />
-              <span className="text-sm font-medium text-brand-blue">Real-Time Intelligence</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-heading font-bold mb-4">
-              Numbers That <span className="gradient-text-gold">Speak</span>
-            </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              38 years of experience. Amplified by 6 AI agents working around the clock. 
-              This isn't the future of real estate — <span className="text-white font-medium">this is right now.</span>
-            </p>
-          </motion.div>
-          
-          <StatsCounter stats={STATS} />
-        </div>
-      </section>
-
-      {/* Agent Roster */}
-      <section id="agents" className="py-24 relative">
-        <div className="absolute inset-0 animated-gradient opacity-30" />
-        <div className="relative max-w-7xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-red/10 border border-brand-red/20 mb-6">
-              <Bot className="w-4 h-4 text-brand-red" />
-              <span className="text-sm font-medium text-brand-red">The Intelligence Core</span>
-            </div>
-            <h2 className="text-4xl md:text-6xl font-heading font-bold mb-6">
-              Meet Your <span className="gradient-text-blue">AI Workforce</span>
-            </h2>
-            <p className="text-slate-400 text-lg max-w-3xl mx-auto">
-              Six specialized agents. One unified mission: find, negotiate, coordinate, 
-              and close the best real estate deals in the GTA — faster and smarter than any human team.
-            </p>
-          </motion.div>
-
-          {/* Two-column: Agents grid + Live feed */}
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <div className="grid md:grid-cols-2 gap-6">
+            transition={{ duration: 0.6 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12"
+        >
+          <div className="md:col-span-3">
+             <h3 className="font-heading text-sm font-bold mb-8 text-slate-400 uppercase tracking-[0.2em]">Your Dedicated Intelligence Core</h3>
+             <motion.div 
+                variants={{
+                    hidden: { opacity: 0 },
+                    show: {
+                        opacity: 1,
+                        transition: { staggerChildren: 0.2 }
+                    }
+                }}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+             >
                 {TEAM.map((agent, i) => (
-                  <motion.div
-                    key={agent.name}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                  >
-                    <AgentCard 
-                      agent={agent} 
-                      onDemo={() => openDemo(agent.name)} 
-                    />
-                  </motion.div>
+                    <AgentCard key={agent.name} agent={agent} />
                 ))}
-              </div>
-            </div>
-
-            <div className="lg:col-span-1">
-              <LiveFeed />
-            </div>
+             </motion.div>
           </div>
-        </div>
-      </section>
-
-      {/* Interactive Demo Section */}
-      <section className="py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/5 via-transparent to-brand-red/5" />
-        <div className="relative max-w-4xl mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-          >
-            <div className="glass-card-strong p-12 rounded-3xl border border-white/10">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-blue to-brand-red flex items-center justify-center mx-auto mb-6 glow-blue">
-                <Play className="w-8 h-8 text-white ml-1" />
-              </div>
-              <h2 className="text-3xl md:text-4xl font-heading font-bold mb-4">
-                See the AI in <span className="text-brand-red">Action</span>
-              </h2>
-              <p className="text-slate-400 text-lg mb-8 max-w-2xl mx-auto">
-                Don't just read about it — experience it. Click any agent above to watch a live 
-                demonstration of how Paul McKennon's AI team works in real-time.
-              </p>
-              
-              <div className="grid sm:grid-cols-3 gap-4 text-left">
-                {[
-                  { icon: MessageSquare, label: "Real Conversations", desc: "Watch agents respond to genuine client inquiries" },
-                  { icon: TrendingUp, label: "Live Market Data", desc: "See real-time property alerts and market shifts" },
-                  { icon: Shield, label: "End-to-End Service", desc: "From search to closing — zero human delays" },
-                ].map((item, i) => (
-                  <div key={i} className="glass-card p-4 rounded-xl">
-                    <item.icon className="w-6 h-6 text-brand-blue mb-2" />
-                    <p className="font-semibold text-sm">{item.label}</p>
-                    <p className="text-xs text-slate-400 mt-1">{item.desc}</p>
-                  </div>
+          <aside className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+             <h4 className="font-heading text-lg font-semibold mb-4 text-brand-blue">Live Activity</h4>
+             <div className="space-y-4 text-sm text-slate-600">
+                {LIVE_ACTIVITIES.map((act, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                        <div className="mt-0.5">{getActivityIcon(act.type)}</div>
+                        <p><span className="font-bold text-slate-800">{act.agent}:</span> {act.text}</p>
+                    </div>
                 ))}
-              </div>
+             </div>
+          </aside>
+        </motion.div>
+        
+        <motion.div id="featured" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <FeaturedPropertyShowcase />
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <PodcastSection />
+        </motion.div>
+        <motion.div id="magnets" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <LeadMagnetsSection />
+        </motion.div>
+        <motion.div id="news" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <NewsGrid />
+        </motion.div>
 
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="mt-8 bg-gradient-to-r from-brand-blue to-brand-dark text-white px-8 py-4 rounded-full text-base font-bold hover:shadow-lg hover:shadow-brand-blue/30 transition-all flex items-center gap-2 mx-auto"
-                onClick={() => openDemo("Maya")}
-              >
-                <Play className="w-5 h-5" />
-                Watch Maya Demo
-                <ArrowRight className="w-5 h-5" />
-              </motion.button>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+        <ContactSection />
+      </main>
 
-      {/* Paul Section */}
-      <PaulSection />
+      <motion.div id="concierge" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
+        <UnifiedConcierge />
+      </motion.div>
 
-      {/* Footer */}
-      <footer className="relative py-16 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-blue to-brand-dark flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="font-heading text-xl font-bold">
-                  <span className="text-white">Paul</span>
-                  <span className="text-brand-red">McKennon</span>
-                </h3>
-              </div>
-              <p className="text-slate-400 max-w-md">
-                Toronto's first AI-powered real estate team. 38 years of expertise, 
-                amplified by cutting-edge intelligence. The future of real estate is here.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Quick Links</h4>
-              <div className="space-y-2 text-sm text-slate-400">
-                <a href="#agents" className="block hover:text-brand-blue transition">AI Team</a>
-                <a href="#stats" className="block hover:text-brand-blue transition">Live Metrics</a>
-                <a href="#paul" className="block hover:text-brand-blue transition">About Paul</a>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Contact</h4>
-              <div className="space-y-2 text-sm text-slate-400">
-                <p>RE/MAX REALTRON REALTY INC.</p>
-                <p>885 PROGRESS AVENUE, STE. 209</p>
-                <p>TORONTO, Ontario M1H3G3</p>
-                <p className="text-brand-gold font-medium">416-289-3333</p>
-              </div>
-            </div>
+      <motion.footer 
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8 }}
+        className="bg-slate-950 text-slate-400 py-12 px-6"
+      >
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-sm">
+          <div className="space-y-4">
+            <h5 className="font-bold text-white text-lg">Paul McKennon</h5>
+            <p>The GTA’s leading real estate concierge, bridging tradition with AI intelligence.</p>
           </div>
-          
-          <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-slate-500">
-              &copy; 2026 Paul McKennon Real Estate Intelligence. All rights reserved.
-            </p>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Circle className="w-2 h-2 text-emerald-400 fill-emerald-400" />
-              <span>6 AI Agents Active</span>
-              <span className="text-slate-700">|</span>
-              <span>24/7 Intelligence</span>
-            </div>
+          <div className="space-y-2">
+            <h5 className="font-bold text-white">Quick Links</h5>
+            <motion.a href="#" whileHover={{ x: 5 }} className="block hover:text-white">Active Listings</motion.a>
+            <motion.a href="#" whileHover={{ x: 5 }} className="block hover:text-white">Services</motion.a>
+            <motion.a href="#" whileHover={{ x: 5 }} className="block hover:text-white">Concierge AI</motion.a>
+          </div>
+          <div className="space-y-2">
+            <h5 className="font-bold text-white">Contact</h5>
+            <p>RE/MAX REALTRON REALTY INC.</p>
+            <p>Brokerage</p>
+            <p>885 PROGRESS AVENUE, STE. 209</p>
+            <p>TORONTO, Ontario M1H3G3</p>
+            <p>416-767-7253</p>
+            <p>416-289-4535</p>
+          </div>
+          <div className="space-y-2">
+            <h5 className="font-bold text-white">Legal</h5>
+            <motion.a href="#" whileHover={{ x: 5 }} className="block hover:text-white">Privacy Policy</motion.a>
+            <motion.a href="#" whileHover={{ x: 5 }} className="block hover:text-white">Terms of Service</motion.a>
           </div>
         </div>
-      </footer>
-
-      {/* AI Chat Widget */}
-      <ChatWidget />
-
-      {/* Agent Demo Modal */}
-      <AnimatePresence>
-        {showDemo && selectedAgent && (
-          <AgentDemo 
-            agentName={selectedAgent} 
-            onClose={() => { setShowDemo(false); setSelectedAgent(null); }} 
-          />
-        )}
-      </AnimatePresence>
+        <div className="max-w-7xl mx-auto border-t border-slate-800 mt-12 pt-8 text-xs text-center text-slate-500">
+          &copy; 2026 Paul McKennon Real Estate. All rights reserved.
+        </div>
+      </motion.footer>
     </div>
   );
 }
-
-export default App;

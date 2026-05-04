@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, Send, Bot, User, Phone, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, X, Send } from 'lucide-react';
 import { TEAM } from '../constants';
+import TypewriterMessage from './TypewriterMessage';
 
 const AGENTS = TEAM; // Reuse team data
 
 export default function UnifiedConcierge() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeAgent, setActiveAgent] = useState(AGENTS[0]);
-  const [messages, setMessages] = useState<{ sender: 'user' | 'agent', text: string, agent?: typeof AGENTS[0] }[]>([
-    { sender: 'agent', text: 'Hello! I am Maya, how can I help you with your property search today?', agent: AGENTS[0] }
+  const [activeAgent, setActiveAgent] = useState(AGENTS[2]);
+  const [messages, setMessages] = useState<{ sender: 'user' | 'agent', text: string, agent?: typeof AGENTS[0], id: number }[]>([
+    { sender: 'agent', text: AGENTS[2].welcomeMessage, agent: AGENTS[2], id: Date.now() }
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -24,14 +25,14 @@ export default function UnifiedConcierge() {
 
   const handleSendMessage = () => {
     if (!input.trim()) return;
-    setMessages([...messages, { sender: 'user', text: input }]);
+    setMessages([...messages, { sender: 'user', text: input, id: Date.now() }]);
     setInput('');
     setIsTyping(true);
     
     // Simulate thinking and handover
     setTimeout(() => {
       simulateAgentHandover(input);
-      setMessages(prev => [...prev, { sender: 'agent', text: `Analyzing your request regarding "${input}"...`, agent: activeAgent }]);
+      setMessages(prev => [...prev, { sender: 'agent', text: `Analyzing your request regarding "${input}"...`, agent: activeAgent, id: Date.now() + 1 }]);
       setIsTyping(false);
     }, 1500);
   };
@@ -69,13 +70,13 @@ export default function UnifiedConcierge() {
 
             {/* Thread */}
             <div className="flex-grow overflow-y-auto p-4 space-y-4">
-              {messages.map((m, i) => (
-                <div key={i} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {messages.map((m) => (
+                <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {m.sender === 'agent' && (
                     <img src={m.agent?.image} alt={m.agent?.name} className="w-8 h-8 rounded-full mr-2 self-end" />
                   )}
                   <div className={`p-3 rounded-2xl max-w-[80%] ${m.sender === 'user' ? 'bg-slate-200 text-slate-800' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>
-                    {m.text}
+                    {m.sender === 'agent' ? <TypewriterMessage text={m.text} /> : m.text}
                   </div>
                 </div>
               ))}
