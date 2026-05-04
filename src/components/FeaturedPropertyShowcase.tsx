@@ -80,7 +80,7 @@ export default function FeaturedPropertyShowcase() {
             </div>
             
             <div className="flex flex-col justify-center">
-                <h4 className="font-heading text-3xl font-bold text-white mb-2">{PROPERTIES[current].title}</h4>
+                <h4 className="font-heading text-3xl font-bold text-brand-blue mb-2">{PROPERTIES[current].title}</h4>
                 <p className="text-3xl font-bold text-brand-blue mb-2 md:mb-4">{PROPERTIES[current].price}</p>
                 <p className="text-slate-600 leading-relaxed mb-4 md:mb-8 flex-grow">{PROPERTIES[current].description}</p>
                 

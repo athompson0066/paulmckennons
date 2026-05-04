@@ -23,18 +23,28 @@ export default function UnifiedConcierge() {
     else setActiveAgent(AGENTS[0]); // Default back to Maya
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!input.trim()) return;
     setMessages([...messages, { sender: 'user', text: input, id: Date.now() }]);
     setInput('');
     setIsTyping(true);
     
-    // Simulate thinking and handover
-    setTimeout(() => {
-      simulateAgentHandover(input);
-      setMessages(prev => [...prev, { sender: 'agent', text: `Analyzing your request regarding "${input}"...`, agent: activeAgent, id: Date.now() + 1 }]);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: input, agentName: activeAgent.name })
+      });
+      const data = await response.json();
+      
+      simulateAgentHandover(data.text); // Still useful to adjust agent if needed, but maybe not fully
+      setMessages(prev => [...prev, { sender: 'agent', text: data.text, agent: activeAgent, id: Date.now() + 1 }]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, { sender: 'agent', text: "Sorry, I'm having trouble connecting at the moment.", agent: activeAgent, id: Date.now() + 1 }]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (

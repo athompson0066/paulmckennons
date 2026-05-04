@@ -22,7 +22,7 @@ async function startServer() {
             question
           }, {
             headers: {
-              'Authorization': 'Bearer Vq7YUtJ75UPH_bZB9t-zWimxaFqg9-l0vliCXx8sw5A',
+              'Authorization': `Bearer ${process.env.FLOWISE_API_TOKEN}`,
               'Content-Type': 'application/json'
             }
           });
