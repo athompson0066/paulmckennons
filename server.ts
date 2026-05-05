@@ -87,8 +87,13 @@ async function startServer() {
         }
       });
       res.json(response.data.items || []);
-    } catch (error) {
-      console.error('YouTube API Error:', error);
+    } catch (error: any) {
+      if (error.response) {
+        console.error('YouTube API Error Data:', JSON.stringify(error.response.data));
+        console.error('YouTube API Error Status:', error.response.status);
+      } else {
+        console.error('YouTube API Error Message:', error.message);
+      }
       res.json([]);
     }
   });
