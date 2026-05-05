@@ -45,42 +45,13 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ question: input })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: input, agentName })
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Flowise error ${response.status}: ${errorText.slice(0, 100)}`);
-      }
-
       const data = await response.json();
-      
-      // Handle different response formats from Flowise
-      let content = '';
-      if (typeof data === 'string') {
-        content = data;
-      } else if (data.text) {
-        content = data.text;
-      } else if (data.json) {
-        content = data.json;
-      } else if (data.data) {
-        content = data.data;
-      } else {
-        content = JSON.stringify(data);
-      }
-      
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant' as const, content }]);
-    } catch (error: any) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, { 
-        id: (Date.now() + 1).toString(), 
-        role: 'assistant' as const, 
-        content: `Error: ${error.message || 'Failed to connect to agent. Please try again.'}` 
-      }]);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: data.text || JSON.stringify(data) }]);
+    } catch (error) {
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: "Error connecting to service." }]);
     } finally {
       setLoading(false);
     }
