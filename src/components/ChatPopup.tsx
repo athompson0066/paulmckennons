@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Send, Trash2, Printer } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -13,11 +13,18 @@ interface ChatPopupProps {
   apiUrl: string;
 }
 
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  isStreaming?: boolean;
+}
+
 export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPopupProps) {
   const agent = TEAM.find(t => t.name === agentName);
   const welcomeMessage = agent?.welcomeMessage || `Hello! I'm ${agentName}. How can I assist you with your GTA real estate needs today?`;
 
-  const [messages, setMessages] = useState<{ id: string; role: 'user' | 'assistant'; content: string }[]>([
+  const [messages, setMessages] = useState<Message[]>([
     { id: '1', role: 'assistant', content: welcomeMessage }
   ]);
   const [input, setInput] = useState('');
@@ -33,29 +40,117 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
     window.print();
   };
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const parseSSEChunk = (chunk: string): string => {
+    const lines = chunk.split('\n');
+    let result = '';
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6);
+        if (data === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.token) {
+            result += parsed.token;
+          } else if (parsed.data) {
+            result += parsed.data;
+          } else if (typeof parsed === 'string') {
+            result += parsed;
+          }
+        } catch {
+          // If not JSON, treat as raw text
+          if (data && data !== '[DONE]') {
+            result += data;
+          }
+        }
+      }
+    }
+    return result;
+  };
 
-    const userMessage = { id: Date.now().toString(), role: 'user' as const, content: input };
+  const sendMessage = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
+
+    const assistantId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true }]);
 
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input, agentName })
+        body: JSON.stringify({ question: input, agentName, streaming: true })
       });
-      const data = await response.json();
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: data.text || JSON.stringify(data) }]);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      
+      if (contentType.includes('text/event-stream') || contentType.includes('application/x-ndjson')) {
+        // Streaming response (SSE or NDJSON)
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+
+        if (!reader) throw new Error('No response body');
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const text = parseSSEChunk(chunk);
+          
+          if (text) {
+            fullText += text;
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: fullText, isStreaming: true }
+                  : m
+              )
+            );
+          }
+        }
+
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantId
+              ? { ...m, content: fullText, isStreaming: false }
+              : m
+          )
+        );
+      } else {
+        // Non-streaming fallback
+        const data = await response.json();
+        const text = data.text || JSON.stringify(data);
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantId
+              ? { ...m, content: text, isStreaming: false }
+              : m
+          )
+        );
+      }
     } catch (error) {
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'assistant' as const, content: "Error connecting to service." }]);
+      console.error('Chat error:', error);
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantId
+            ? { ...m, content: "Error connecting to service.", isStreaming: false }
+            : m
+        )
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [input, loading, apiUrl, agentName]);
 
   return (
     <AnimatePresence>
@@ -99,7 +194,7 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
                 let isContractors = false;
                 let responseData: any = null;
 
-                if (m.role === 'assistant') {
+                if (m.role === 'assistant' && m.content) {
                   try {
                     const parsed = JSON.parse(m.content);
                     if (parsed.response_type === "listings") {
@@ -138,12 +233,15 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
                         li: ({node, ...props}) => <li className="mb-1" {...props} />,
                       }}
                     >
-                      {textToRender}
+                      {textToRender || (m.isStreaming ? '●' : '')}
                     </ReactMarkdown>
+                    {m.isStreaming && (
+                      <span className="inline-block w-2 h-2 bg-brand-blue rounded-full animate-pulse ml-1" />
+                    )}
                   </motion.div>
                 );
               })}
-              {loading && (
+              {loading && messages[messages.length - 1]?.role !== 'assistant' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-slate-400 pl-4 py-2">
                   {agentName} is thinking...
                 </motion.div>
