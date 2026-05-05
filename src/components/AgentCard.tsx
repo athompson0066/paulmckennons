@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion'; // Ensure you are using 'framer-motion' or your specific 'motion/react' alias
 import { Linkedin, Twitter, Instagram, MessageCircle } from 'lucide-react';
 import ChatPopup from './ChatPopup';
 
@@ -18,8 +18,21 @@ interface Agent {
   };
 }
 
+// Map agent names to their specific Flowise API endpoints
+const AGENT_API_MAP: Record<string, string> = {
+  'Sarah': 'https://flowise.aiolosmedia.com/api/v1/prediction/1600fdb2-2d41-48d0-b8b8-12e4f521ee7b',
+  'Elias': 'https://flowise.aiolosmedia.com/api/v1/prediction/ffc08529-cd30-4ce1-afca-1abe5f9149c5',
+  'Maya':  'https://flowise.aiolosmedia.com/api/v1/prediction/7bf044c4-162b-4466-8ebc-e5689b87d3ea',
+  'Vince': 'https://flowise.aiolosmedia.com/api/v1/prediction/fb170a66-116b-4c7b-80b7-f784c78add47',
+  'Bella': 'https://flowise.aiolosmedia.com/api/v1/prediction/4dd56503-fd61-4090-aa3d-0e24d7011c98',
+  'Penny': 'https://flowise.aiolosmedia.com/api/v1/prediction/4a129e23-31c9-4a78-8089-da37d137d451'
+};
+
 export default function AgentCard({ agent }: { agent: Agent }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  // Check if this agent has a chat capability
+  const hasChat = !!AGENT_API_MAP[agent.name];
 
   return (
     <motion.div
@@ -37,12 +50,22 @@ export default function AgentCard({ agent }: { agent: Agent }) {
       
       <div className="flex justify-between items-center mb-4">
         <div className="flex space-x-3">
-          <a href={agent.socialLinks.linkedin} className="text-slate-400 hover:text-brand-blue transition"><Linkedin size={16} /></a>
-          <a href={agent.socialLinks.twitter} className="text-slate-400 hover:text-brand-blue transition"><Twitter size={16} /></a>
-          <a href={agent.socialLinks.instagram} className="text-slate-400 hover:text-brand-blue transition"><Instagram size={16} /></a>
+          <a href={agent.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-brand-blue transition">
+            <Linkedin size={16} />
+          </a>
+          <a href={agent.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-brand-blue transition">
+            <Twitter size={16} />
+          </a>
+          <a href={agent.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-brand-blue transition">
+            <Instagram size={16} />
+          </a>
         </div>
-        {(agent.name === 'Sarah' || agent.name === 'Elias' || agent.name === 'Maya' || agent.name === 'Vince' || agent.name === 'Bella' || agent.name === 'Penny') && (
-            <button onClick={() => setIsChatOpen(true)} className="flex items-center gap-1 bg-brand-blue text-white text-[10px] font-bold px-2 py-1 rounded-full hover:bg-brand-red transition">
+        
+        {hasChat && (
+            <button 
+              onClick={() => setIsChatOpen(true)} 
+              className="flex items-center gap-1 bg-brand-blue text-white text-[10px] font-bold px-2 py-1 rounded-full hover:bg-brand-red transition"
+            >
               <MessageCircle size={10} /> Chat
             </button>
         )}
@@ -58,23 +81,13 @@ export default function AgentCard({ agent }: { agent: Agent }) {
           <p className="text-[11px] text-slate-700">{agent.roleHighlight}</p>
         </div>
       </div>
-      {(agent.name === 'Sarah' || agent.name === 'Elias' || agent.name === 'Maya' || agent.name === 'Vince' || agent.name === 'Bella' || agent.name === 'Penny') && (
+
+      {hasChat && (
         <ChatPopup 
           isOpen={isChatOpen} 
           onClose={() => setIsChatOpen(false)} 
           agentName={agent.name} 
-          apiUrl={agent.name === 'Sarah' 
-            ? 'https://flowise.aiolosmedia.com/api/v1/prediction/1600fdb2-2d41-48d0-b8b8-12e4f521ee7b'
-            : agent.name === 'Elias'
-              ? 'https://flowise.aiolosmedia.com/api/v1/prediction/ffc08529-cd30-4ce1-afca-1abe5f9149c5'
-              : agent.name === 'Maya'
-                ? '/api/chat'
-                : agent.name === 'Vince'
-                  ? 'https://flowise.aiolosmedia.com/api/v1/prediction/fb170a66-116b-4c7b-80b7-f784c78add47'
-                  : agent.name === 'Bella'
-                    ? 'https://flowise.aiolosmedia.com/api/v1/prediction/4dd56503-fd61-4090-aa3d-0e24d7011c98'
-                    : 'https://flowise.aiolosmedia.com/api/v1/prediction/4a129e23-31c9-4a78-8089-da37d137d451'
-          } 
+          apiUrl="/api/chat" 
         />
       )}
     </motion.div>

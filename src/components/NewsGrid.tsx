@@ -19,6 +19,7 @@ export default function NewsGrid() {
     fetch('/api/youtube-news')
       .then((res) => res.json())
       .then((data) => {
+        console.log('YouTube News API Response:', data);
         if (Array.isArray(data)) {
           setNews(data);
         } else {
@@ -27,7 +28,7 @@ export default function NewsGrid() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error(err);
+        console.error('YouTube News API Fetch Error:', err);
         setNews([]);
         setLoading(false);
       });
@@ -35,6 +36,15 @@ export default function NewsGrid() {
 
   if (loading) {
     return <section className="my-16"><p>Loading news...</p></section>;
+  }
+
+  if (news.length === 0) {
+    return (
+      <section className="my-16">
+        <h3 className="font-heading text-sm font-bold mb-8 text-slate-400 uppercase tracking-[0.2em]">Real Estate News</h3>
+        <p className="text-slate-500">No news available at the moment. Please check the API configuration.</p>
+      </section>
+    );
   }
 
   return (
