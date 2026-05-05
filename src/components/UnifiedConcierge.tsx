@@ -31,32 +31,6 @@ export default function UnifiedConcierge() {
     else setActiveAgent(AGENTS[0]);
   };
 
-  const parseSSEChunk = (chunk: string): string => {
-    const lines = chunk.split('\n');
-    let result = '';
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6);
-        if (data === '[DONE]') break;
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.token) {
-            result += parsed.token;
-          } else if (parsed.data) {
-            result += parsed.data;
-          } else if (typeof parsed === 'string') {
-            result += parsed;
-          }
-        } catch {
-          if (data && data !== '[DONE]') {
-            result += data;
-          }
-        }
-      }
-    }
-    return result;
-  };
-
   const handleSendMessage = useCallback(async () => {
     if (!input.trim()) return;
     
@@ -83,54 +57,68 @@ export default function UnifiedConcierge() {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      
-      if (contentType.includes('text/event-stream') || contentType.includes('application/x-ndjson')) {
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      let buffer = '';
 
-        if (!reader) throw new Error('No response body');
+      if (!reader) throw new Error('No response body');
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const text = parseSSEChunk(chunk);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
           
-          if (text) {
-            fullText += text;
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === messageId
-                  ? { ...m, text: fullText, isStreaming: true }
-                  : m
-              )
-            );
+          const dataStr = trimmed.slice(5).trim();
+          if (!dataStr) continue;
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            
+            if (parsed.event === 'token' && typeof parsed.data === 'string') {
+              fullText += parsed.data;
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === messageId
+                    ? { ...m, text: fullText, isStreaming: true }
+                    : m
+                )
+              );
+            } else if (parsed.event === 'agentFlowEvent' && parsed.data === 'FINISHED') {
+              // Flow complete
+            }
+          } catch {
+            // Not JSON, ignore
           }
         }
-
-        simulateAgentHandover(fullText);
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === messageId
-              ? { ...m, text: fullText, isStreaming: false }
-              : m
-          )
-        );
-      } else {
-        const data = await response.json();
-        const text = data.text || JSON.stringify(data);
-        simulateAgentHandover(text);
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === messageId
-              ? { ...m, text, isStreaming: false }
-              : m
-          )
-        );
       }
+
+      // Process remaining buffer
+      if (buffer.trim().startsWith('data:')) {
+        const dataStr = buffer.trim().slice(5).trim();
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.event === 'token' && typeof parsed.data === 'string') {
+            fullText += parsed.data;
+          }
+        } catch { /* ignore */ }
+      }
+
+      simulateAgentHandover(fullText);
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === messageId
+            ? { ...m, text: fullText || 'No response received', isStreaming: false }
+            : m
+        )
+      );
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev =>

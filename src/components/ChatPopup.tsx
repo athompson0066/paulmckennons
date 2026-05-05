@@ -40,33 +40,6 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
     window.print();
   };
 
-  const parseSSEChunk = (chunk: string): string => {
-    const lines = chunk.split('\n');
-    let result = '';
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6);
-        if (data === '[DONE]') break;
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.token) {
-            result += parsed.token;
-          } else if (parsed.data) {
-            result += parsed.data;
-          } else if (typeof parsed === 'string') {
-            result += parsed;
-          }
-        } catch {
-          // If not JSON, treat as raw text
-          if (data && data !== '[DONE]') {
-            result += data;
-          }
-        }
-      }
-    }
-    return result;
-  };
-
   const sendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
@@ -90,54 +63,66 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      
-      if (contentType.includes('text/event-stream') || contentType.includes('application/x-ndjson')) {
-        // Streaming response (SSE or NDJSON)
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+      let buffer = '';
 
-        if (!reader) throw new Error('No response body');
+      if (!reader) throw new Error('No response body');
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const text = parseSSEChunk(chunk);
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
           
-          if (text) {
-            fullText += text;
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: fullText, isStreaming: true }
-                  : m
-              )
-            );
+          const dataStr = line.slice(5).trim();
+          if (!dataStr) continue;
+
+          try {
+            const parsed = JSON.parse(dataStr);
+            
+            if (parsed.event === 'token' && typeof parsed.data === 'string') {
+              fullText += parsed.data;
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === assistantId
+                    ? { ...m, content: fullText, isStreaming: true }
+                    : m
+                )
+              );
+            } else if (parsed.event === 'agentFlowEvent' && parsed.data === 'FINISHED') {
+              // Flow complete
+            }
+          } catch {
+            // Not JSON, ignore
           }
         }
-
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantId
-              ? { ...m, content: fullText, isStreaming: false }
-              : m
-          )
-        );
-      } else {
-        // Non-streaming fallback
-        const data = await response.json();
-        const text = data.text || JSON.stringify(data);
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantId
-              ? { ...m, content: text, isStreaming: false }
-              : m
-          )
-        );
       }
+
+      // Process remaining buffer
+      if (buffer.startsWith('data:')) {
+        const dataStr = buffer.slice(5).trim();
+        try {
+          const parsed = JSON.parse(dataStr);
+          if (parsed.event === 'token' && typeof parsed.data === 'string') {
+            fullText += parsed.data;
+          }
+        } catch { /* ignore */ }
+      }
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantId
+            ? { ...m, content: fullText || 'No response received', isStreaming: false }
+            : m
+        )
+      );
     } catch (error) {
       console.error('Chat error:', error);
       setMessages(prev =>
