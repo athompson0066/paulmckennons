@@ -17,7 +17,7 @@ async function startServer() {
   const AGENT_API_MAP: Record<string, string> = {
     'Sarah': 'https://flowise.aiolosmedia.com/api/v1/prediction/1600fdb2-2d41-48d0-b8b8-12e4f521ee7b',
     'Elias': 'https://flowise.aiolosmedia.com/api/v1/prediction/ffc08529-cd30-4ce1-afca-1abe5f9149c5',
-    'Maya':  'https://flowise.aiolosmedia.com/api/v1/prediction/2655efdb-f498-41dd-a6b1-d9b7b5e0fb1c',
+    'Maya':  'https://flowise.aiolosmedia.com/api/v1/prediction/7bf044c4-162b-4466-8ebc-e5689b87d3ea',
     'Vince': 'https://flowise.aiolosmedia.com/api/v1/prediction/fb170a66-116b-4c7b-80b7-f784c78add47',
     'Bella': 'https://flowise.aiolosmedia.com/api/v1/prediction/4dd56503-fd61-4090-aa3d-0e24d7011c98',
     'Penny': 'https://flowise.aiolosmedia.com/api/v1/prediction/4a129e23-31c9-4a78-8089-da37d137d451'
