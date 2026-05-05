@@ -19,7 +19,7 @@ interface Agent {
 }
 
 // Map agent names to their specific Flowise API endpoints
-const AGENT_API_MAP: Record<string, string> = {
+export const AGENT_API_MAP: Record<string, string> = {
   'Sarah': 'https://flowise.aiolosmedia.com/api/v1/prediction/1600fdb2-2d41-48d0-b8b8-12e4f521ee7b',
   'Elias': 'https://flowise.aiolosmedia.com/api/v1/prediction/ffc08529-cd30-4ce1-afca-1abe5f9149c5',
   'Maya':  'https://flowise.aiolosmedia.com/api/v1/prediction/7bf044c4-162b-4466-8ebc-e5689b87d3ea',
@@ -87,7 +87,7 @@ export default function AgentCard({ agent }: { agent: Agent }) {
           isOpen={isChatOpen} 
           onClose={() => setIsChatOpen(false)} 
           agentName={agent.name} 
-          apiUrl="/api/chat" 
+          apiUrl={AGENT_API_MAP[agent.name]} 
         />
       )}
     </motion.div>

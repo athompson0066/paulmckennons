@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Search, Home, Hammer } from 'lucide-react';
 import ChatPopup from './ChatPopup';
+import { AGENT_API_MAP } from './AgentCard';
 
 export default function PainPointSection() {
   const [chatOpen, setChatOpen] = useState(false);
@@ -38,7 +39,7 @@ export default function PainPointSection() {
         isOpen={chatOpen} 
         onClose={() => setChatOpen(false)} 
         agentName={activeAgent} 
-        apiUrl="/api/chat" />
+        apiUrl={AGENT_API_MAP[activeAgent] || ''} />
     </section>
   );
 }

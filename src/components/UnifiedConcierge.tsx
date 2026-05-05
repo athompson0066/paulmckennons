@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X, Send } from 'lucide-react';
 import { TEAM } from '../constants';
+import { AGENT_API_MAP } from './AgentCard';
 import TypewriterMessage from './TypewriterMessage';
 
 const AGENTS = TEAM; // Reuse team data
@@ -30,10 +31,14 @@ export default function UnifiedConcierge() {
     setIsTyping(true);
     
     try {
-      const response = await fetch('/api/chat', {
+      const flowiseUrl = AGENT_API_MAP[activeAgent.name];
+      if (!flowiseUrl) {
+        throw new Error(`No Flowise endpoint configured for ${activeAgent.name}`);
+      }
+      const response = await fetch(flowiseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input, agentName: activeAgent.name })
+        body: JSON.stringify({ question: input })
       });
       const data = await response.json();
       
