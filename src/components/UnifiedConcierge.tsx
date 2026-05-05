@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, X, Send } from 'lucide-react';
 import { TEAM } from '../constants';
@@ -12,7 +12,6 @@ interface Message {
   text: string;
   agent?: typeof AGENTS[0];
   id: number;
-  isStreaming?: boolean;
 }
 
 export default function UnifiedConcierge() {
@@ -22,7 +21,7 @@ export default function UnifiedConcierge() {
     { sender: 'agent', text: AGENTS[2].welcomeMessage, agent: AGENTS[2], id: Date.now() }
   ]);
   const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const simulateAgentHandover = (text: string) => {
     if (text.toLowerCase().includes('contractor')) setActiveAgent(AGENTS[3]);
@@ -31,15 +30,15 @@ export default function UnifiedConcierge() {
     else setActiveAgent(AGENTS[0]);
   };
 
-  const handleSendMessage = useCallback(async () => {
-    if (!input.trim()) return;
+  const handleSendMessage = async () => {
+    if (!input.trim() || loading) return;
     
     setMessages(prev => [...prev, { sender: 'user', text: input, id: Date.now() }]);
     setInput('');
-    setIsTyping(true);
+    setLoading(true);
     
     const messageId = Date.now() + 1;
-    setMessages(prev => [...prev, { sender: 'agent', text: '', agent: activeAgent, id: messageId, isStreaming: true }]);
+    setMessages(prev => [...prev, { sender: 'agent', text: '...', agent: activeAgent, id: messageId }]);
     
     try {
       const flowiseUrl = AGENT_API_MAP[activeAgent.name];
@@ -50,72 +49,32 @@ export default function UnifiedConcierge() {
       const response = await fetch(flowiseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input, streaming: true })
+        body: JSON.stringify({ question: input })
       });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullText = '';
-      let buffer = '';
-
-      if (!reader) throw new Error('No response body');
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          
-          const dataStr = trimmed.slice(5).trim();
-          if (!dataStr) continue;
-
-          try {
-            const parsed = JSON.parse(dataStr);
-            
-            if (parsed.event === 'token' && typeof parsed.data === 'string') {
-              fullText += parsed.data;
-              setMessages(prev =>
-                prev.map(m =>
-                  m.id === messageId
-                    ? { ...m, text: fullText, isStreaming: true }
-                    : m
-                )
-              );
-            } else if (parsed.event === 'agentFlowEvent' && parsed.data === 'FINISHED') {
-              // Flow complete
-            }
-          } catch {
-            // Not JSON, ignore
-          }
-        }
+      const data = await response.json();
+      
+      // Extract text from Flowise response
+      let responseText = '';
+      if (typeof data.text === 'string') {
+        responseText = data.text;
+      } else if (data.text) {
+        responseText = JSON.stringify(data.text);
+      } else if (data.data && data.data.text) {
+        responseText = data.data.text;
+      } else {
+        responseText = JSON.stringify(data);
       }
 
-      // Process remaining buffer
-      if (buffer.trim().startsWith('data:')) {
-        const dataStr = buffer.trim().slice(5).trim();
-        try {
-          const parsed = JSON.parse(dataStr);
-          if (parsed.event === 'token' && typeof parsed.data === 'string') {
-            fullText += parsed.data;
-          }
-        } catch { /* ignore */ }
-      }
-
-      simulateAgentHandover(fullText);
+      simulateAgentHandover(responseText);
       setMessages(prev =>
         prev.map(m =>
           m.id === messageId
-            ? { ...m, text: fullText || 'No response received', isStreaming: false }
+            ? { ...m, text: responseText }
             : m
         )
       );
@@ -124,14 +83,14 @@ export default function UnifiedConcierge() {
       setMessages(prev =>
         prev.map(m =>
           m.id === messageId
-            ? { ...m, text: "Sorry, I'm having trouble connecting at the moment.", isStreaming: false }
+            ? { ...m, text: "Sorry, I'm having trouble connecting at the moment." }
             : m
         )
       );
     } finally {
-      setIsTyping(false);
+      setLoading(false);
     }
-  }, [input, activeAgent]);
+  };
 
   return (
     <>
@@ -170,19 +129,14 @@ export default function UnifiedConcierge() {
                     <img src={m.agent?.image} alt={m.agent?.name} className="w-8 h-8 rounded-full mr-2 self-end" />
                   )}
                   <div className={`p-3 rounded-2xl max-w-[80%] ${m.sender === 'user' ? 'bg-slate-200 text-slate-800' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>
-                    {m.sender === 'agent' && !m.isStreaming ? (
-                      <TypewriterMessage text={m.text} />
+                    {m.text === '...' ? (
+                      <span className="text-slate-400">{activeAgent.name} is typing...</span>
                     ) : (
-                      <span>{m.text || ''}{m.isStreaming && <span className="inline-block w-2 h-2 bg-brand-blue rounded-full animate-pulse ml-1" />}</span>
+                      <TypewriterMessage text={m.text} />
                     )}
                   </div>
                 </div>
               ))}
-              {isTyping && messages[messages.length - 1]?.sender !== 'agent' && (
-                <div className="flex justify-start">
-                   <div className="p-3 bg-white text-slate-500 italic text-sm">{activeAgent.name} is analyzing your request...</div>
-                </div>
-              )}
             </div>
 
             <div className="p-4 border-t border-slate-100 space-y-3">
@@ -199,7 +153,7 @@ export default function UnifiedConcierge() {
                   placeholder="Ask Paul's team..."
                   className="flex-grow p-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-blue"
                 />
-                <button onClick={handleSendMessage} className="p-2 bg-brand-blue text-white rounded-lg hover:bg-opacity-90">
+                <button onClick={handleSendMessage} className="p-2 bg-brand-blue text-white rounded-lg hover:bg-opacity-90" disabled={loading}>
                   <Send size={18} />
                 </button>
               </div>

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Send, Trash2, Printer } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -17,7 +17,6 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  isStreaming?: boolean;
 }
 
 export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPopupProps) {
@@ -40,7 +39,7 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
     window.print();
   };
 
-  const sendMessage = useCallback(async (e: React.FormEvent) => {
+  const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
@@ -50,76 +49,37 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
     setLoading(true);
 
     const assistantId = (Date.now() + 1).toString();
-    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', isStreaming: true }]);
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '...' }]);
 
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: input, agentName, streaming: true })
+        body: JSON.stringify({ question: input })
       });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullText = '';
-      let buffer = '';
-
-      if (!reader) throw new Error('No response body');
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          
-          const dataStr = line.slice(5).trim();
-          if (!dataStr) continue;
-
-          try {
-            const parsed = JSON.parse(dataStr);
-            
-            if (parsed.event === 'token' && typeof parsed.data === 'string') {
-              fullText += parsed.data;
-              setMessages(prev =>
-                prev.map(m =>
-                  m.id === assistantId
-                    ? { ...m, content: fullText, isStreaming: true }
-                    : m
-                )
-              );
-            } else if (parsed.event === 'agentFlowEvent' && parsed.data === 'FINISHED') {
-              // Flow complete
-            }
-          } catch {
-            // Not JSON, ignore
-          }
-        }
-      }
-
-      // Process remaining buffer
-      if (buffer.startsWith('data:')) {
-        const dataStr = buffer.slice(5).trim();
-        try {
-          const parsed = JSON.parse(dataStr);
-          if (parsed.event === 'token' && typeof parsed.data === 'string') {
-            fullText += parsed.data;
-          }
-        } catch { /* ignore */ }
+      const data = await response.json();
+      
+      // Extract text from Flowise response
+      let responseText = '';
+      if (typeof data.text === 'string') {
+        responseText = data.text;
+      } else if (data.text) {
+        responseText = JSON.stringify(data.text);
+      } else if (data.data && data.data.text) {
+        responseText = data.data.text;
+      } else {
+        responseText = JSON.stringify(data);
       }
 
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
-            ? { ...m, content: fullText || 'No response received', isStreaming: false }
+            ? { ...m, content: responseText }
             : m
         )
       );
@@ -128,14 +88,14 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
-            ? { ...m, content: "Error connecting to service.", isStreaming: false }
+            ? { ...m, content: "Error connecting to service." }
             : m
         )
       );
     } finally {
       setLoading(false);
     }
-  }, [input, loading, apiUrl, agentName]);
+  };
 
   return (
     <AnimatePresence>
@@ -179,7 +139,7 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
                 let isContractors = false;
                 let responseData: any = null;
 
-                if (m.role === 'assistant' && m.content) {
+                if (m.role === 'assistant' && m.content && m.content !== '...') {
                   try {
                     const parsed = JSON.parse(m.content);
                     if (parsed.response_type === "listings") {
@@ -211,24 +171,25 @@ export default function ChatPopup({ isOpen, onClose, agentName, apiUrl }: ChatPo
                     key={m.id} 
                     className={`p-4 rounded-2xl shadow-sm max-w-[85%] text-sm ${m.role === 'assistant' ? 'bg-white border border-slate-200 text-slate-800 rounded-bl-none' : 'bg-brand-blue text-white rounded-br-none ml-auto'}`}
                   >
-                    <ReactMarkdown
-                      components={{
-                        p: ({node, ...props}) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
-                        ul: ({node, ...props}) => <ul className="list-disc ml-4 mb-2" {...props} />,
-                        li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                      }}
-                    >
-                      {textToRender || (m.isStreaming ? '●' : '')}
-                    </ReactMarkdown>
-                    {m.isStreaming && (
-                      <span className="inline-block w-2 h-2 bg-brand-blue rounded-full animate-pulse ml-1" />
+                    {m.content === '...' ? (
+                      <span className="text-slate-400">{agentName} is thinking...</span>
+                    ) : (
+                      <ReactMarkdown
+                        components={{
+                          p: ({node, ...props}) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc ml-4 mb-2" {...props} />,
+                          li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                        }}
+                      >
+                        {textToRender}
+                      </ReactMarkdown>
                     )}
                   </motion.div>
                 );
               })}
-              {loading && messages[messages.length - 1]?.role !== 'assistant' && (
+              {loading && messages[messages.length - 1]?.content !== '...' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-slate-400 pl-4 py-2">
-                  {agentName} is thinking...
+                  {agentName} is typing...
                 </motion.div>
               )}
             </div>
